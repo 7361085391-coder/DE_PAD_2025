@@ -1,0 +1,276 @@
+---
+title: "ppp"
+author: "DEIMAR"
+format: html
+---
+
+## Quarto
+
+Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
+
+## Running Code
+
+When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
+
+```{r}
+1 + 1
+```
+
+You can add options to executable code like this 
+
+```{r}
+#| echo: false
+2 * 2
+```
+
+The `echo: false` option disables the printing of code (only output is displayed).
+#cargamos librerias
+```{r}
+library(tidyverse)
+library(googlesheets4)
+library(lme4)
+library(emmeans)
+library(magrittr)
+```
+#cargamos la base de datso
+```{r}
+url <- "https://docs.google.com/spreadsheets/d/1lD426P1FcGXW80M7pKOa2Tvq0oyJGZaIRFJIbZgir64/edit?gid=48781746#gid=48781746"
+gs <- url %>% 
+  as_sheets_id()
+
+sheet_id <- "1lD426P1FcGXW80M7pKOa2Tvq0oyJGZaIRFJIbZgir64"
+gs <- as_sheets_id(sheet_id)
+fb <- read_sheet(gs, "fb")
+read_sheet("s/d/1lD426P1FcGXW80M7pKOa2Tvq0oyJGZaIRFJIbZgir64/edit?gid=48781746#gid=4878174")
+  fb <- gs %>% 
+  range_read("fb")
+
+```
+
+
+
+#anova para diametro
+```{r}
+anova(lm(Diametro_mm ~ treatment, data = fb))
+```
+
+#tukey
+```{r}
+library(multcomp)
+library(agricolae)
+```
+
+```{r}
+
+fb$treatment <- as.factor(fb$treatment)
+summary(multcomp::glht(lm(Diametro_mm ~ treatment, data = fb), linfct = mcp(treatment = "Tukey")))
+
+```
+
+#letras de significancia
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(multcomp)
+library(emmeans)
+model <- lm(Diametro_mm ~ treatment, data = fb)
+emmeans_results <- emmeans(model, ~ treatment)
+letters<- multcomp::cld(emmeans_results, adjust = "sidak", Letters = LETTERS)
+```
+
+
+```{r}
+print(letters)
+```
+
+
+library(multcomp)
+library(emmeans)
+
+# Realiza el análisis
+model <- lm(Diametro_mm ~ treatment, data = fb)
+emmeans_results <- emmeans(model, ~ treatment)
+letters <- multcomp::cld(emmeans_results, adjust = "sidak")
+
+
+
+```{r}
+ggplot(fb, aes(treatment, Diametro_mm)) +
+geom_boxplot() +
+geom_text(data = letters, aes(y = max(fb$Diametro_mm, na.rm = TRUE) * 1.1, label = .group)) +
+labs(x = "Tratamiento", y = "Diámetro (mm)") +
+theme_minimal() +
+theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+
+
+```{r}
+ggplot(fb, aes(treatment, Diametro_mm)) +
+geom_col() +
+labs(x = "Tratamiento", y = "Diámetro (mm)") +
+theme_minimal() +
+theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+
+
+
+ggplot(fb, aes(treatment, Diametro_mm, fill = treatment)) +
+geom_boxplot() +
+geom_text(data = letters, aes(y = max(fb$Diametro_mm, na.rm = TRUE) * 1.1, label = .group)) +
+labs(x = "Tratamiento", y = "Diámetro (mm)") +
+theme_minimal() +
+theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```{r}
+ggplot(fb, aes(treatment, Diametro_mm, fill = treatment)) +
+geom_boxplot() +
+geom_text(data = letters, aes(y = max(fb$Diametro_mm, na.rm = TRUE) * 1.1, label = .group)) +
+labs(x = "Tratamiento", y = "Diámetro (mm)") +
+theme_minimal() +
+theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+
+
+
+
+```{r}
+ggplot(fb, aes(treatment, Diametro_mm, fill = treatment)) +
+geom_col() +
+labs(x = "Tratamiento", y = "Diámetro (mm)") +
+theme_minimal() +
+theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(multcomp)
+library(emmeans)
+```
+
+```{r}
+model <- lm(Diametro_mm ~ interaction(Sacarosa, Kinetina), data = fb)
+emmeans_results <- emmeans(model, ~ interaction(Sacarosa, Kinetina))
+letters <- multcomp::cld(emmeans_results, adjust = "sidak")
+```
+
+
+```{r}
+model <- lm(Diametro_mm ~ interaction(Sacarosa, Kinetina), data = fb)
+emmeans_results <- emmeans(model, ~ interaction(Sacarosa, Kinetina))
+letters <- multcomp::cld(emmeans_results, adjust = "sidak")
+
+combined_data <- fb %>%
+  group_by(tratamiento = interaction(Sacarosa, Kinetina)) %>%
+  summarise(mean = mean(Diametro_mm, na.rm = TRUE),
+            se = sd(Diametro_mm, na.rm = TRUE)/sqrt(n())) %>%
+  mutate(tratamiento = as.character(tratamiento)) %>%
+  left_join(letters %>% mutate(tratamiento = as.character(interaction(Sacarosa, Kinetina))), by = "tratamiento")
+
+ggplot(combined_data, aes(x = tratamiento, y = mean, fill = tratamiento)) +
+  geom_col() +
+  geom_errorbar(aes(ymin = mean - se, ymax = mean + se), width = 0.2) +
+  geom_text(aes(y = mean + se + 0.1, label = .group), vjust = -0.5) +
+  labs(x = "Tratamiento", y = "Diámetro (mm)") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        plot.title = element_text(hjust = 0.5, face = "bold", size = 13),
+        legend.position = "right")
+
+```
+
+```{r}
+combined_data <- fb %>%
+group_by(tratamiento = interaction(Sacarosa, Kinetina)) %>%
+summarise(mean = mean(Diametro_mm, na.rm = TRUE),
+se = sd(Diametro_mm, na.rm = TRUE)/sqrt(n())) %>%
+mutate(tratamiento = as.character(tratamiento)) %>%
+left_join(letters %>% mutate(tratamiento = as.character(interaction(Sacarosa, Kinetina))), by = "tratamiento")
+
+model <- lm(Diametro_mm ~ interaction(Sacarosa, Kinetina), data = fb)
+emmeans_results <- emmeans(model, ~ interaction(Sacarosa, Kinetina))
+letters <- multcomp::cld(emmeans_results, adjust = "sidak")
+
+ggplot(combined_data, aes(x = tratamiento, y = mean, fill = tratamiento)) +
+geom_col() +
+geom_errorbar(aes(ymin = mean - se, ymax = mean + se), width = 0.2) +
+geom_text(aes(y = mean + se, label = .group), vjust = -0.5) +
+labs(x = "Tratamiento", y = "Diámetro (mm)") +
+theme_minimal() +
+theme(axis.text.x = element_text(angle = 45, hjust = 1),
+plot.title = element_text(hjust = 0.5, face = "bold", size = 13),
+legend.position = "right")
+```
+
+
+
+
+```{r}
+combined_data <- fb %>%
+  group_by(tratamiento = interaction(Sacarosa, Kinetina)) %>%
+  summarise(mean = mean(Diametro_mm, na.rm = TRUE),
+            se = sd(Diametro_mm, na.rm = TRUE)/sqrt(n())) %>%
+  mutate(tratamiento = as.character(tratamiento)) %>%
+  left_join(letters %>% mutate(tratamiento = as.character(interaction(Sacarosa, Kinetina))), by = "tratamiento")
+model <- lm(Diametro_mm ~ interaction(Sacarosa, Kinetina), data = fb)
+emmeans_results <- emmeans(model, ~ interaction(Sacarosa, Kinetina))
+letters <- multcomp::cld(emmeans_results, adjust = "sidak")
+
+ggplot(combined_data, aes(x = tratamiento, y = mean, fill = tratamiento)) +
+geom_col() +
+geom_errorbar(aes(ymin = mean - se, ymax = mean + se), width = 0.2) +
+geom_text(aes(y = mean + se + 0.1, label = .group), vjust = -0.5) +
+labs(x = "Tratamientos", y = "Diámetro (mm)") +
+theme_minimal() +
+theme(axis.text.x = element_text(angle = 45, hjust = 1),
+plot.title = element_text(hjust = 0.5, face = "bold", size = 13),
+legend.position = "right")
+```
+
+
+
+Aquí tienes el código modificado que reemplaza `letters` con `letters_bar`:
+
+```{r}
+letters_bar <- multcomp::cld(emmeans_results, adjust = "sidak")
+```
+
+```{r}
+combined_data <- fb %>%
+  group_by(tratamiento = interaction(Sacarosa, Kinetina)) %>%
+  summarise(mean = mean(Diametro_mm, na.rm = TRUE),
+            se = sd(Diametro_mm, na.rm = TRUE)/sqrt(n())) %>%
+  mutate(tratamiento = as.character(tratamiento)) %>%
+  left_join(letters_bar %>% mutate(tratamiento = as.character(interaction(Sacarosa, Kinetina))), by = "tratamiento")
+
+ggplot(combined_data, aes(x = tratamiento, y = mean, fill = tratamiento)) +
+  geom_col() +
+  geom_errorbar(aes(ymin = mean - se, ymax = mean + se), width = 0.2) +
+  geom_text(aes(y = mean + se + 0.1, label = .group), vjust = -0.5) +
+  labs(x = "Tratamientos", y = "Diámetro (mm)") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        plot.title = element_text(hjust = 0.5, face = "bold", size = 13),
+        legend.position = "right")
+```
+Yes, you can replace `letters_bar` with `letter?` in the bar plot code.
+Replace `letters_bar` with `letters` in the plot code:
+
+```{r}
+
+ggplot(combined_data, aes(x = tratamiento, y = mean, fill = tratamiento)) +
+geom_col() +
+geom_errorbar(aes(ymin = mean - se, ymax = mean + se), width = 0.2) +
+geom_text(aes(y = mean + se + 0.1, label = .group), vjust = -0.5) +
+labs(x = "Tratamientos", y = "Diámetro (mm)") +
+theme_minimal() +
+theme(axis.text.x = element_text(angle = 45, hjust = 1),
+plot.title = element_text(hjust = 0.5, face = "bold", size = 13),
+legend.position = "right")
+```
+
+
+

@@ -1,0 +1,133 @@
+---
+title: "maiz"
+format: html
+---
+
+## Quarto
+
+Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
+
+## Running Code
+
+When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
+
+```{r}
+1 + 1
+```
+
+You can add options to executable code like this 
+
+```{r}
+#| echo: false
+2 * 2
+```
+
+The `echo: false` option disables the printing of code (only output is displayed).
+#cargar paquetees
+```{r}
+library(readxl)
+library(lme4)
+library(emmeans)
+library(FactoMineR)
+library(tidyverse)
+library(googlesheets4)
+library(multcomp)
+
+```
+
+
+
+
+#importar base de datos
+```{r}
+url <- "https://docs.google.com/spreadsheets/d/1o4mtAkI1lBgoUzqDT-e7cIhIwh_K5m6CoxAx0ETvwXU/edit?gid=1753270824#gid=1753270824"
+gs <- url %>% 
+  as_sheets_id()
+fb <- gs %>% 
+  range_read(sheet = "fb")
+str(fb)
+```
+#modelo estadistico
+
+
+$$rendimineto=/mu+bloque+prociza+densidad+procinza*densidad+e$$
+
+
+
+
+```{r}
+library(lme4)
+md <- lm(rendiminto_g_ha ~ bloque + porcinaza*densidad, data = fb)
+
+anova(md)
+```
+
+
+
+#comparcion de medias
+```{r}
+library(emmeans)
+library(multcomp)
+library(multcompView)
+library(ggplot2)
+
+
+
+
+```
+
+```{r}
+ggplot(fb, aes(x = porcinaza, y = rendiminto_g_ha, fill = factor(densidad))) +
+  geom_boxplot() +
+  labs(x = "Porcinaza", y = "Rendimiento (g/ha)", fill = "Densidad")
+
+```
+#analis multivariable
+de la base de datos fb, hacer un grafico PCA agrupado por densidad y porcinaza usando el paquete FactoMineR
+
+```{r}
+library(FactoMineR)
+PCA(fb, quanti.sup = c(3, 12, 13), quali.sup = c(1, 2, 4), graph = FALSE)
+
+```
+
+```{r}
+library(ggplot2)
+PCA(fb, quanti.sup = c(3, 12, 13), quali.sup = c(1, 2, 4), graph = TRUE)
+
+```
+
+
+hacer un resumen de porcinaza por dosis para las variables cuantitativas usando tidyverse
+
+```{r}
+fb %>%
+  group_by(porcinaza) %>%
+  summarise(across(where(is.numeric), mean, na.rm = TRUE))
+
+```
+
+```{r}
+fb %>%
+  group_by(porcinaza) %>%
+  summarise(across(where(is.numeric), mean, na.rm = TRUE))
+fb$trt <- paste(fb$porcinaza, fb$densidad, sep = "_")
+
+```
+
+#analisi multivariado
+usando la base de datos fb, hacer un grafico PCA agrupado por densidad y porcinaza usando el paquete FactorMineR
+
+```{r}
+library(FactoMineR)
+
+
+
+```
+
+
+
+
+
+
+
