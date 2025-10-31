@@ -1,0 +1,154 @@
+---
+title: "PESO FRESCO"
+author: "DEIMAR"
+format: html
+---
+
+## Quarto
+
+Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
+
+## Running Code
+
+When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
+
+```{r}
+1 + 1
+```
+
+You can add options to executable code like this 
+
+```{r}
+#| echo: false
+2 * 2
+```
+
+The `echo: false` option disables the printing of code (only output is displayed).
+```{r}
+library(tidyverse)
+library(googlesheets4)
+library(lme4)
+library(emmeans)
+library(magrittr)
+```
+#cargamos la base de datso
+```{r}
+url <- "https://docs.google.com/spreadsheets/d/1lD426P1FcGXW80M7pKOa2Tvq0oyJGZaIRFJIbZgir64/edit?gid=48781746#gid=48781746"
+gs <- url %>% 
+  as_sheets_id()
+
+sheet_id <- "1lD426P1FcGXW80M7pKOa2Tvq0oyJGZaIRFJIbZgir64"
+gs <- as_sheets_id(sheet_id)
+fb <- read_sheet(gs, "fb")
+read_sheet("s/d/1lD426P1FcGXW80M7pKOa2Tvq0oyJGZaIRFJIbZgir64/edit?gid=48781746#gid=4878174")
+  fb <- gs %>% 
+  range_read("fb")
+
+```
+
+#pruebas de normalidad u homogeneidad
+```{r}
+
+
+library(car)
+shapiro.test(fb$Peso_fresco_g)
+leveneTest(Peso_fresco_g ~ treatment, data = fb)
+
+
+```
+
+#aplicamos kruskall wallis dado que no cumplen los supuestos
+
+
+```{r}
+
+kruskal.test(Peso_fresco_g ~ treatment, data = fb)
+```
+#aplicacion de dunn
+```{r}
+library(dunn.test)
+dunn.test(fb$Peso_fresco_g, fb$treatment, method="bonferroni")
+```
+#grafico de barras
+```{r}
+dunn_res <- dunn.test(fb$Peso_fresco_g, fb$treatment, method="bonferroni")
+
+library(rcompanion)
+cld_result <- cldList(comparison = dunn_res$comparisons, 
+p.value    = dunn_res$P.adjusted,
+threshold  = 0.05)
+
+cld_result
+```
+
+
+```{r}
+names(dunn_res$P.adjusted) <- dunn_res$comparisons
+
+```
+
+
+```{r}
+fb_summary <- fb %>%
+  group_by(Sacarosa_kinetina) %>%
+  summarise(mean_peso = mean(Peso_fresco_g, na.rm = TRUE),
+            se_peso = sd(Peso_fresco_g, na.rm = TRUE) / sqrt(n())) %>%
+  filter(!is.na(mean_peso))  # Eliminar filas con mean_peso NA
+```
+
+```{r}
+print(fb_summary)
+```
+
+
+
+
+# Bar plot
+
+fb_summary <- fb %>%
+  group_by(Sacarosa_kinetina) %>%
+  summarise(mean_peso = mean(Peso_fresco_g),
+            se_peso = sd(Peso_fresco_g)/sqrt(n()))
+
+ggplot(fb_summary, aes(x = Sacarosa_kinetina, y = mean_peso)) +
+  geom_col() +
+  geom_errorbar(aes(ymin = mean_peso - se_peso, ymax = mean_peso + se_peso), 
+                width = 0.2, color = "black") +
+  geom_text(aes(label = cld_result$Letter, y = mean_peso + se_peso), vjust = -0.5) +
+  labs(x = "Interacciones", y = "Peso fresco (g)")
+ggplot(fb_summary, aes(x = Sacarosa_kinetina, y = mean_peso)) +
+  geom_col(fill = "green") +
+  geom_errorbar(aes(ymin = mean_peso - se_peso, ymax = mean_peso + se_peso), 
+                width = 0.2, color = "black") +
+  geom_text(aes(label = cld_result$Letter, y = mean_peso + se_peso), vjust = -0.5) +
+  labs(x = "Interacciones", y = "Peso fresco (g)")
+```{r}
+fb_summary <- fb %>%
+  group_by(Sacarosa_kinetina) %>%
+  summarise(mean_peso = mean(Peso_fresco_g),
+            se_peso = sd(Peso_fresco_g)/sqrt(n()))
+
+ggplot(fb_summary, aes(x = Sacarosa_kinetina, y = mean_peso)) +
+  geom_col() +
+  geom_errorbar(aes(ymin = mean_peso - se_peso, ymax = mean_peso + se_peso), 
+                width = 0.2, color = "black") +
+  geom_text(aes(label = cld_result$Letter, y = mean_peso + se_peso), vjust = -0.5) +
+  labs(x = "Interacciones", y = "Peso fresco (g)")
+ggplot(fb_summary, aes(x = Sacarosa_kinetina, y = mean_peso)) +
+  geom_col(fill = "green") +
+  geom_errorbar(aes(ymin = mean_peso - se_peso, ymax = mean_peso + se_peso), 
+                width = 0.2, color = "black") +
+  geom_text(aes(label = cld_result$Letter, y = mean_peso + se_peso), vjust = -0.5) +
+  labs(x = "Interacciones", y = "Peso fresco (g)")
+```
+
+
+
+
+
+
+
+
+
+
+
