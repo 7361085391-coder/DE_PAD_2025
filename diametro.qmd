@@ -1,0 +1,184 @@
+---
+title: "diametro"
+author: "DEIMAR"
+format: html
+---
+
+## Quarto
+
+Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
+
+## Running Code
+
+When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
+
+```{r}
+1 + 1
+```
+
+You can add options to executable code like this 
+
+```{r}
+#| echo: false
+2 * 2
+```
+
+The `echo: false` option disables the printing of code (only output is displayed).
+#cargamos librerias
+```{r}
+library(tidyverse)
+library(googlesheets4)
+library(lme4)
+library(emmeans)
+library(magrittr)
+```
+#cargamos la base de datso
+```{r}
+url <- "https://docs.google.com/spreadsheets/d/1lD426P1FcGXW80M7pKOa2Tvq0oyJGZaIRFJIbZgir64/edit?gid=48781746#gid=48781746"
+gs <- url %>% 
+  as_sheets_id()
+
+sheet_id <- "1lD426P1FcGXW80M7pKOa2Tvq0oyJGZaIRFJIbZgir64"
+gs <- as_sheets_id(sheet_id)
+fb <- read_sheet(gs, "fb")
+read_sheet("s/d/1lD426P1FcGXW80M7pKOa2Tvq0oyJGZaIRFJIbZgir64/edit?gid=48781746#gid=4878174")
+  fb <- gs %>% 
+  range_read("fb")
+
+```
+#preiba de normalidad u homogeneidad
+```{r}
+#prueba de normalidad
+shapiro.test(fb$Diametro_mm)
+#prueba de homogeneidad
+library(car)
+leveneTest(Diametro_mm ~ treatment, data = fb)
+
+```
+
+#trasnformaciones logaritmicas (x+1)
+```{r}
+fb$log_Diametro_mm <- log(fb$Diametro_mm + 1)
+```
+```{r}
+# Verificar normalidad de los datos transformados
+shapiro.test(fb$log_Diametro_mm)
+
+# Verificar homogeneidad de varianzas
+library(car)
+leveneTest(log_Diametro_mm ~ treatment, data = fb)
+```
+# los datos no cumplen con los uspuestos entonces se aplica kruskall wallis
+```{r}
+kruskal.test(Diametro_mm ~ treatment, data = fb)
+```
+#post hoc
+```{r}
+library(FSA)
+dunnTest(Diametro_mm ~ treatment, data = fb, method = "bh")
+```
+
+```{r}
+install.packages("multcompView")
+```
+
+
+
+```{r}
+
+fb$treatment <- as.factor(fb$treatment)
+dunn_results <- dunnTest(Diametro_mm ~ treatment, data = fb, method = "bh")
+p_values <- as.numeric(dunn_results$pairwise$p.adj)
+```
+```{r}
+
+```
+
+```{r}
+letters$.group <- gsub("1", "a", letters$.group)
+letters$.group <- gsub("2", "b", letters$.group)
+letters$.group <- gsub("3", "c", letters$.group)
+model <- lm(Diametro_mm ~ interaction(Sacarosa, Kinetina), data = fb)
+emmeans_results <- emmeans(model, ~ interaction(Sacarosa, Kinetina))
+letter <- multcomp::cld(emmeans_results, adjust = "sidak")
+combined_data <- fb %>%
+group_by(tratamiento = interaction(Sacarosa, Kinetina)) %>%
+summarise(mean = mean(Diametro_mm, na.rm = TRUE),
+se = sd(Diametro_mm, na.rm = TRUE)/sqrt(n())) %>%
+mutate(tratamiento = as.character(tratamiento)) %>%
+left_join(letters %>% mutate(tratamiento = as.character(interaction(Sacarosa, Kinetina))), by = "tratamiento")
+
+ggplot(combined_data, aes(x = tratamiento, y = mean, fill = tratamiento)) +
+geom_col() +
+geom_errorbar(aes(ymin = mean - se, ymax = mean + se), width = 0.2) +
+geom_text(aes(y = mean + se + 0.1, label = .group), vjust = -0.5) +
+labs(x = "Tratamientos", y = "Diámetro (mm)") +
+theme_minimal() +
+theme(axis.text.x = element_text(angle = 45, hjust = 1.0))
+ggplot(combined_data, aes(x = tratamiento, y = mean, fill = tratamiento)) +
+  geom_col() +
+  geom_errorbar(aes(ymin = mean - se, ymax = mean + se), width = 0.2) +
+  geom_text(aes(y = mean + se + 0.1, label = .group), vjust = -0.5) +
+  labs(x = "Tratamientos", y = "Diámetro (mm)") +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.3))) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "none")
+ggplot(combined_data, aes(x = tratamiento, y = mean, fill = tratamiento)) +
+  geom_col(fill = "green") +
+  geom_errorbar(aes(ymin = mean - se, ymax = mean + se), width = 0.2) +
+  geom_text(aes(y = mean + se + 0.1, label = .group), vjust = -0.5) +
+  labs(x = "Tratamientos", y = "Diámetro (mm)") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_fill_manual(values = rep("green", length(unique(combined_data$tratamiento))))
+```
+
+
+
+letters$.group <- gsub("1", "a", letters$.group)
+letters$.group <- gsub("2", "b", letters$.group)
+letters$.group <- gsub("3", "c", letters$.group)
+model <- lm(Diametro_mm ~ interaction(Sacarosa, Kinetina), data = fb)
+emmeans_results <- emmeans(model, ~ interaction(Sacarosa, Kinetina))
+letter <- multcomp::cld(emmeans_results, adjust = "sidak")
+combined_data <- fb %>%
+group_by(tratamiento = interaction(Sacarosa, Kinetina)) %>%
+summarise(mean = mean(Diametro_mm, na.rm = TRUE),
+se = sd(Diametro_mm, na.rm = TRUE)/sqrt(n())) %>%
+mutate(tratamiento = as.character(tratamiento)) %>%
+left_join(letters %>% mutate(tratamiento = as.character(interaction(Sacarosa, Kinetina))), by = "tratamiento")
+
+ggplot(combined_data, aes(x = tratamiento, y = mean, fill = tratamiento)) +
+geom_col() +
+geom_errorbar(aes(ymin = mean - se, ymax = mean + se), width = 0.2) +
+geom_text(aes(y = mean + se + 0.1, label = .group), vjust = -0.5) +
+labs(x = "Tratamientos", y = "Diámetro (mm)") +
+theme_minimal() +
+theme(axis.text.x = element_text(angle = 45, hjust = 1.0))
+ggplot(combined_data, aes(x = tratamiento, y = mean, fill = tratamiento)) +
+  geom_col() +
+  geom_errorbar(aes(ymin = mean - se, ymax = mean + se), width = 0.2) +
+  geom_text(aes(y = mean + se + 0.1, label = .group), vjust = -0.5) +
+  labs(x = "Tratamientos", y = "Diámetro (mm)") +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.3))) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "none")
+ggplot(combined_data, aes(x = tratamiento, y = mean, fill = tratamiento)) +
+  geom_col(fill = "green") +
+  geom_errorbar(aes(ymin = mean - se, ymax = mean + se), width = 0.2) +
+  geom_text(aes(y = mean + se + 0.1, label = .group), vjust = -0.5) +
+  labs(x = "Tratamientos", y = "Diámetro (mm)") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_fill_manual(values = rep("green", length(unique(combined_data$tratamiento))))
+
+
+
+
+
+
+
+
+
